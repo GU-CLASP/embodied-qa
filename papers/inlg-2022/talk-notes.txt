@@ -1,0 +1,114 @@
+A lot of recent research in NLP is focusing on building models that can be applied in the real world.
+This trend becomes evident if one looks at the number of published papers on topics of multi-modality, grounding and interaction.
+Similar to those papers, our primary driving force in this paper is the need for better understanding of how we can build good and efficient multi-modal embodied agents.
+
+However, many existing multi-modal task which are being developed are mere abstractions of real world interaction.
+For example, visual question answering and visual dialogue are tasks which do have multi-modal interaction between agents or human and the model, but they lack more realistic real-world interaction.
+
+At the same time, generation is an important part in these tasks because simply wrong generation due to many factors including dataset biases and modelling issues can directly affect how these models behave in the real world.
+
+In this paper, we are going to look at the embodied question answering task.
+In this task, the agent has to answer the question about the environment it is placed in.
+In order to answer the question, it first has to navigate and find the target object.
+When the agent reaches the navigation endpoint, the system answers the question based on the view from its final position.
+In addition, navigation is also improved by question answering accuracy through reinforcement learning.
+Thus this makes embodied aspect (navigation) and language aspect (question answering) highly dependent on each other, therefore building a fitting interactive task for our purposes.
+
+
+
+Let's look at the language aspect in more detail.
+Given multiple images and the question, the modelling task is to predict the answer to the question.
+The questions can be about either an object or the scene.
+The dataset has three types of questions: colour (what colour is the OBJ?), colour room (what colour is obj in the room?), location (what room is the OBJ located in?).
+Note that the dataset is highly biased: nearly 70% of questions are of colour room type, 15 are of colour and 15 are of location.
+The answer distribution also tells us that there are biases: some answers are over-represented in the dataset (black, brown).
+The scenes are created based on the Matterport3D dataset of house environments.
+The agent navigates in this environment through the Habitat tool, a framework to build and train virtual agents.
+
+
+The question answering model is very simple: the question is encoded with LSTM, all five images are encoded with the pre-trained CNN.
+Next, given the question and the images, attention over images is computed (denoted as weighting in the graph) and weighted features are produced at the first multiplication step.
+Then all weighted visual features are summed and compared against the question by multiplication.
+The result is passed to the classifier which predicts an answer from the fixed set of answer candidates.
+We view this task as a simple NLG task: the model is asked to map important parts in vision and language (content selection, attention over the image and multiplication step) which is followed by prediction of a single label (surface realisation).
+
+The task of EQA and specifically question answering in the context of embodied agents is very different from most of the multi-modal tasks.
+Specifically, the task is hard and not necessarily in a positive way.
+There are many biases and problems that were identified in either previous research or by us and now we will talk about them.
+For example, some parts of the house can be rendered poorly, which is the limitation of the task.
+Another limitation is that there is no human attention on selecting the image that the question is about.
+This could lead agent to learn from language much more because vision is so uninformative.
+
+Not only the questions were generated automatically (meaning that they have a fixed structure and fixed vocabulary), many answers were also defined on questionable grounds.
+For example, the set of colours used by the authors consist of 22 items which were originally designed to describe situations when contrast is needed, not necessarily to depict colours in real world with natural descriptions, with the addition of 'slate grey' and 'off-white', since they are common colours in houses. 
+One could also expect that learning the difference between yellow, greenish yellow and yellow green would requires a lot of reliance on visual features, making the task harder for the model.
+The task is further complicated by how many colours in the set are easily confused under different lighting conditions (white and off-white, grey and slate grey).
+
+Another important characteristic of the dataset is the high similarity between house scenes.
+What you see in the top row are the examples of frames from the EQA dataset, the bottom row shows examples from the VQA data.
+The images used in other multi-modal tasks such as VQA are typically taken ``in the wild'', in the real world and they depict many different objects.
+In the context of existing datasets for EQA, the images are constrained by the house theme.
+Plus, the category of houses is a very rigid category in terms of objects and their properties: houses typically contain a very fixed set of objects and rarely deviate from this set, e.g. there are doors, tables and chairs in all houses, but it is unlikely that a house would have a car in the living room.
+In general, the model needs to discriminate a small set of visually diverse and thematically similar objects which might actually make the task harder. At any rate, it emphasises the bias towards the information from language.
+
+Since indoor areas in houses can be very similar, there are often many instances of the same object class that share same attributes.
+This leads to an unbalanced distribution of answers (black and brown are over-represented), possibly allowing the model to exploit these priors, e.g. sofas are often brown.
+Although this bias might artificially inflate accuracy on the dataset (because the dataset itself is biased), the very same bias prevents the model from answering about properties of object which are different and specific to the situations, e.g. then the sofa is red and has a checkered pattern on it.
+The dataset does not only reflect true properties of ground truth objects (e.g., plants are most likely green), but it also has bias towards specific properties for some objects.
+For example, the pianos in the dataset are often white, or visually very similar.
+What happens if it suddenly sees a black piano?
+
+To handle such cases and use vision to discriminate and learn, the model needs to have a deeper understanding of fine-grained visual representations to be able to answer a question about this black piano and not being biased by the fact that they are often just white in this dataset.
+However, it has been previously shown that EQA models struggle to use vision properly.
+It means that the model never actually benefits from or uses visual features (it is important for the case of black and white piano).
+Given that the models are not able to learn from vision as much as they should, we are going to examine what is it exactly that makes them learn so little from vision in the first experiment.
+
+We trained three types of models: the model that relies on both question and images to predict the answer.
+The model that takes black images and the question to predict the answer, that is, vision is there and it has some structure, but it's not informative.
+And the third model has the fewest number of parameters and takes only the question, no vision involved.
+
+First, we observe that multi-modal architecture shows the highest performance in terms of accuracy overall and on two question types
+However, the kappa score close to 0 (it is even negative) shows that the model has a similar performance to a model that has memorised the distribution of labels, therefore the model exploits dataset biases and benefits from them, not necessarily from actual learning.
+
+In terms of question types, colour questions are generally the easiest to answer, followed by colour_room and location questions.
+Location questions seem to be predicted the best from language alone, indicating strong dataset bias and model's learning of it.
+Although location questions are about 'what room is the OBJ located in?', the model does not even need to see the room itself - it can predict the room type from language alone. This is a clear indication of the bias in the dataset (e.g., fridges are in kitchens).
+
+When looking at mean ranks, we see an interesting trend.
+Models that see either black images or no images at all are better at approximating the correct answer.
+This could be due to their stronger learning from language since vision is either structured (so it is simple to learn from it) or absent and there is no complex visual information to confuse the model, which is different for the Vis-L model.
+The model makes a very bad guess when it sees an actual image and it is better to give it either a structure instead of images  or fully remove vision.
+There are multiple reasons why this happens: either visual features are disruptive, the model is bad or the dataset is biased
+Given such differences between models with varied visual representations, we ask the following question: how much it can actually learn from vision? In other words, how much can the model extract from original visual representations?
+Different from previous work on EQA, we do not remove vision, but examine the limits of the existing EQA model when its vision is permuted.
+
+We evaluate the original model on vision, which varies in terms of three parameters: structure, content and context.
+Original images have all three elements: they have structure reflected in object patterns, they have content, that is, they do have house objects and not something irrelevant, they also have context because the objects which are visible are relevant for the question.
+Shuffled scenes lack context, because these are image frames from other episodes in the dataset.
+We were taking these images randomly and there is a very small probability (which is nearly impossible to control for) that sometimes a shuffled image would depict target object in the single correct environment.
+Black images have structure (only zeros) so it is some sort of a pattern, but they lack context and more importantly content.
+Finally, random noise in images presumably has nothing useful for the model to learn from.
+
+All three different types of perturbations mirror problems with the EQA dataset.
+For example, random noise image can be seen as the probe to examine robustness of the model when the scene is badly rendered.
+Shuffled images can be viewed as an alternative to evaluate the impact of wrong navigation on question answering (because wrong navigation might lead to images with content and structure, but not correct context).
+And testing the model on black images can tell us about how much it prefers language over vision since black images have no content and context to learn from, but only structure. In this case, language is richer (has content etc).
+In other words, with this experiment we evaluate both robustness of the model and how each specific dataset bias might affect its performance (basically, which bias or dataset problem is more hurtful for the model).
+
+The results are shown in the table that you see now.
+The colour intensity indicates performance: higher intensity means better performance.
+The results suggest that there is a gradual decline in performance once images become more and more disturbed.
+Black images are more informative than random noise, but less informative than shuffled images. This indicates that the model has learned some general structured patterns during training and it can use them to alleviate its task when seeing images that have structure (black, zeros).
+Although the model does learn a lot from language (as previous experiment and previous research has shown), it still needs some bits of information that are at least structured as indicates by better performance on black images compared to random noise.
+However, it generally seems to be not affected a lot when images are shuffled or black - the differences between mean ranks and accuracies on question types show that shuffled and black confuse model less than random.
+All these results indicate that although the model DOES learn structure and some knowledge from visual scenes, it probably learns some general and low-level information and it is not able to learn fine-grained representations to understand images much better.
+
+We examined the task of Embodied Question Answering along with the corresponding dataset and focused on the question answering part of this task.
+Overall, the experiments show us that in the embodied task pattern matching is not enough but we do need some deeper representation of the scene involving attention, simulation, physics, common-sense knowledge, etc. which all come from different cognitive modalities. 
+There are also all other problems and biases: image rendering, question and answer distribution, etc - but these are known and very general, so we are going to mention other suggestions.
+First implementing cognitive attention in the model could be helpful.
+Second, QA could be split into multiple subtasks, because it is not simple pattern matching.
+Finally, using pre-trained transformers could tell us whether these models are able to learn better given the biases in the dataset and image selection for the task.
+If a performance of such a model improves then it must be the case that transformers capture some common sene knowledge through pre-training, but this could also be a hallucination of a different kind: it is hallucination because it is general V&L knowledge not the specific one arising from a particular image and text.
+
+Thank you for your attention!
