@@ -1,0 +1,14 @@
+Similar to previous work, we start with the experiment in which we test general usefulness of visual modality. We find that vision is not that useful for all different questions in the dataset and the model can actually approximate the correct answer better when seeing black images or no images at all.
+
+But what exactly does the model learn then about images when it sees them?
+As our main contribution, we examine how much visual information the model can actually extract from images and apply it in different evaluation set-ups.
+We take the model trained on original images and evaluate it on different visual perturbations.
+
+The results indicate that the model does perform worse when seeing all different types of perturbations, but the degree of perturbation affects the performance.
+We show that vision IS used to some degree by the model as the model can answer questions from shuffled and even black images, but then it means that the model is good at extracting low-level visual knowledge, and it does not have deeper high-level understanding of the image.
+
+Results:
+1. probably something similar to visual data that is used in robotics for spatial labelling of places.
+2. the dataset and its biases both on the language and vision side; the task that involves first finding the correct object
+
+In the paper we discuss dataset and model biases and we do it in the embodied and interactive set-up, which has not been done before. Our results are useful for development of more curated datasets for generative and interactive tasks.

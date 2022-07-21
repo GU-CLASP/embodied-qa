@@ -1,0 +1,1 @@
+The video of the talk is available at [the GU Play website](https://play.gu.se/media/look-and-answer-the-question/0_hxsw8d9c).
